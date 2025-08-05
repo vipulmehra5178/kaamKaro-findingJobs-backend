@@ -25,20 +25,27 @@ const applyToJob = async (req, res) => {
     if (req.file.mimetype !== "application/pdf") {
       return res.status(400).json({ message: "Only PDF resumes are allowed" });
     }
+    if (!req.body.phone || !/^\d{10}$/.test(req.body.phone)) {
+      return res
+        .status(400)
+        .json({ message: "Phone number must be exactly 10 digits" });
+    }
 
     const uploadStream = cloudinary.uploader.upload_stream(
-{
-    folder: "resumes",
-    resource_type: "auto",
-    public_id: `resume_${Date.now()}`,
-    format: "pdf",    
-    type:'upload',                 
-    use_filename: true,
-    unique_filename: false,
-  },
+      {
+        folder: "resumes",
+        resource_type: "auto",
+        public_id: `resume_${Date.now()}`,
+        format: "pdf",
+        type: "upload",
+        use_filename: true,
+        unique_filename: false,
+      },
       async (error, result) => {
         if (error) {
-          return res.status(500).json({ message: "Upload failed", error: error.message });
+          return res
+            .status(500)
+            .json({ message: "Upload failed", error: error.message });
         }
 
         console.log("✅ Uploaded to:", result.secure_url);
@@ -46,6 +53,7 @@ const applyToJob = async (req, res) => {
         const application = await Application.create({
           job: jobId,
           candidate: userId,
+          phone: req.body.phone,
           resumeUrl: result.secure_url,
           skills: req.body.skills?.split(",").map((s) => s.trim()) || [],
           experience: req.body.experience,
@@ -55,11 +63,14 @@ const applyToJob = async (req, res) => {
             yearOfCompletion: req.body.yearOfCompletion,
           },
           portfolioLinks:
-            req.body.portfolioLinks?.split(",").map((link) => link.trim()) || [],
+            req.body.portfolioLinks?.split(",").map((link) => link.trim()) ||
+            [],
           coverLetter: req.body.coverLetter,
         });
 
-        return res.status(201).json({ message: "Applied successfully", application });
+        return res
+          .status(201)
+          .json({ message: "Applied successfully", application });
       }
     );
 
@@ -69,7 +80,6 @@ const applyToJob = async (req, res) => {
     res.status(500).json({ message: "Application failed", error: err.message });
   }
 };
-
 
 const getMyApplications = async (req, res) => {
   try {
@@ -114,7 +124,6 @@ const getJobApplications = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   applyToJob,

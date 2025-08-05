@@ -11,6 +11,16 @@ const applicationSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+ phone: {
+  type: String,
+  required: true,
+  validate: {
+    validator: function (v) {
+      return /^\d{10}$/.test(v);
+    },
+    message: props => `${props.value} is not a valid 10-digit phone number!`
+  }
+},
   resumeUrl: {
     type: String,
     required: true
@@ -19,6 +29,7 @@ const applicationSchema = new mongoose.Schema({
   experience: {
     type: String 
   },
+  
   education: {
     degree: String,
     institution: String,
