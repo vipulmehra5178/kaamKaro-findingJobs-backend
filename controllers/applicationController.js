@@ -48,7 +48,7 @@ const applyToJob = async (req, res) => {
             .json({ message: "Upload failed", error: error.message });
         }
 
-        console.log("✅ Uploaded to:", result.secure_url);
+        console.log("Uploaded to:", result.secure_url);
 
         const application = await Application.create({
           job: jobId,
@@ -113,7 +113,7 @@ const getJobApplications = async (req, res) => {
     }
 
     const applications = await Application.find({ job: jobId })
-      .populate("candidate", "name email role")
+      .populate("candidate", "name email phone")
       .sort({ createdAt: -1 });
 
     res.status(200).json(applications);
@@ -124,9 +124,32 @@ const getJobApplications = async (req, res) => {
     });
   }
 };
+const getApplicationCount = async (req, res) => {
+  try {
+    const employerId = req.user.userId;
+    const jobId = req.params.jobId;
+
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    if (job.postedBy.toString() !== employerId) {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    const count = await Application.countDocuments({ job: jobId });
+
+    res.status(200).json({ jobId, applicationCount: count });
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to fetch application count",
+      error: err.message,
+    });
+  }
+};
 
 module.exports = {
   applyToJob,
   getMyApplications,
   getJobApplications,
+  getApplicationCount,
 };

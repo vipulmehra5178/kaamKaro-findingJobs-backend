@@ -47,10 +47,33 @@ const getMyPostedJobs = async (req, res) => {
     const jobs = await Job.find({ postedBy: employerId }).sort({ createdAt: -1 });
     res.status(200).json(jobs);
   } catch (err) {
-    console.error("❌ Error in getMyPostedJobs:", err);
+    console.error("Error in getMyPostedJobs:", err);
     res.status(500).json({ message: "Failed to fetch posted jobs", error: err.message });
   }
 };
 
+const deleteJob = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const userId = req.user.userId;
 
-module.exports = { createJob, getAllJobs ,getJobById ,getMyPostedJobs };
+    const job = await Job.findById(jobId);
+
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    if (job.postedBy.toString() !== userId) {
+      return res.status(403).json({ message: "Not authorized to delete this job" });
+    }
+
+    await job.deleteOne();
+
+    res.status(200).json({ message: "Job deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting job:", err);
+    res.status(500).json({ message: "Failed to delete job", error: err.message });
+  }
+};
+
+module.exports = { createJob, getAllJobs ,getJobById ,getMyPostedJobs ,deleteJob };

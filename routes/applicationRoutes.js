@@ -5,6 +5,7 @@ const {
   applyToJob,
   getMyApplications,
   getJobApplications,
+  getApplicationCount
 } = require('../controllers/applicationController');
 
 const { protect, isCandidate, isEmployer } = require('../middlewares/authMiddleware');
@@ -17,5 +18,6 @@ router.get('/my', protect, isCandidate, getMyApplications);
 
 router.get('/job/:jobId', protect, isEmployer, getJobApplications);
 
+router.get('/job/:jobId/count', protect, isEmployer, getApplicationCount);
 
 module.exports = router;
