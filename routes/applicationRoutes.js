@@ -12,12 +12,9 @@ const { protect, isCandidate, isEmployer } = require('../middlewares/authMiddlew
 const upload = require('../middlewares/upload');
 
 router.post('/:jobId/apply', protect, isCandidate, upload.single('resume'), applyToJob);
-
 router.get('/my', protect, isCandidate, getMyApplications);
 
-
-router.get('/job/:jobId', protect, isEmployer, getJobApplications);
-
 router.get('/job/:jobId/count', protect, isEmployer, getApplicationCount);
+router.get('/job/:jobId', protect, isEmployer, getJobApplications);
 
 module.exports = router;
