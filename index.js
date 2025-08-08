@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const applicationRoutes = require('./routes/applicationRoutes')
+const aiRoutes = require('./routes/aiRoutes')
 dotenv.config({ debug: true });
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/jobs', require('./routes/jobRoutes'));
 
 app.use('/api/applications', applicationRoutes);
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 
 app.listen(PORT, () => {
