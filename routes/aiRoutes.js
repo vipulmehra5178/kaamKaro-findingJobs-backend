@@ -1,16 +1,15 @@
 const express = require("express");
 const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
-const upload = require("../middlewares/upload"); // your existing multer setup
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const upload = require("../middlewares/upload");
 
 const router = express.Router();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 router.post("/resume-eval", upload.single("resume"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
     let resumeText = "";
 
@@ -18,6 +17,7 @@ router.post("/resume-eval", upload.single("resume"), async (req, res) => {
       const pdfData = await pdfParse(req.file.buffer);
       resumeText = pdfData.text;
     }
+
     else if (
       req.file.mimetype ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -26,52 +26,93 @@ router.post("/resume-eval", upload.single("resume"), async (req, res) => {
         buffer: req.file.buffer,
       });
       resumeText = docxData.value;
-    } else {
+    }
+
+    else {
       return res.status(400).json({ error: "Unsupported file type" });
     }
 
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `
-You are an advanced Applicant Tracking System (ATS) evaluator, industry recruiter, and career coach with deep expertise in resume parsing, job market trends, and skills gap analysis.
+You are an advanced Applicant Tracking System (ATS) evaluator.
 
-Analyze the following resume thoroughly and return ONLY valid JSON in the exact format below:
+Return ONLY valid JSON in this exact format:
+
 {
-  "atsScore": number (0-100), // ATS compatibility score based on keyword match, formatting, and clarity
-  "suggestions": [ 
-    "Actionable suggestion 1 for improving ATS ranking and recruiter appeal",
-    "Actionable suggestion 2 for enhancing skills and achievements visibility",
-    "Actionable suggestion 3 for strengthening alignment with desired career path",
-    "Actionable suggestion 4 for improving clarity, structure, or formatting",
-    "Actionable suggestion 5 for adding in-demand skills, certifications, or experience"
+  "atsScore": number,
+  "suggestions": [
+    "Suggestion 1",
+    "Suggestion 2",
+    "Suggestion 3",
+    "Suggestion 4",
+    "Suggestion 5"
   ],
-  "recommendedRole": "Most suitable next career move based on skills, experience, and market demand"
+  "recommendedRole": "Role name"
 }
-
-When evaluating, consider:
-- ATS keyword optimization based on relevant job descriptions
-- Skill gaps that could hinder job matches
-- Industry-specific formatting and section ordering
-- Clarity and conciseness of achievements
-- Career growth trajectory and high-demand opportunities
 
 Resume:
 ${resumeText}
 `;
 
-    const result = await model.generateContent(prompt);
-    let output = result.response.text();
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://kaam-karo-peach.vercel.app/" || "http://localhost:5173/", 
+        "X-Title": "Resume Analyzer"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3-8b-instruct",
+        messages: [
+          {
+            role: "system",
+            content: "You are an ATS resume evaluator. Return only valid JSON."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.3
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("OpenRouter Error:", data);
+      return res.status(500).json({
+        error: "AI request failed",
+        details: data
+      });
+    }
+
+    let output = data.choices?.[0]?.message?.content || "";
+
+    if (!output) {
+      return res.status(500).json({ error: "Empty AI response" });
+    }
+
+    output = output.replace(/```json|```/g, "").trim();
 
     try {
-      output = output.replace(/```json|```/g, "").trim();
-      const jsonData = JSON.parse(output);
-      res.json(jsonData);
+      const parsed = JSON.parse(output);
+      return res.json(parsed);
     } catch (err) {
       console.error("JSON Parse Error:", err);
-      res.status(500).json({ error: "AI did not return valid JSON" });
+      console.log("Raw Output:", output);
+      return res.status(500).json({
+        error: "AI did not return valid JSON",
+        raw: output
+      });
     }
+
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Resume evaluation failed" });
+    console.error("Resume Eval Error:", error);
+    return res.status(500).json({
+      error: "Resume evaluation failed",
+      details: error.message
+    });
   }
 });
 
