@@ -30,8 +30,7 @@ router.post("/resume-eval", upload.single("resume"), async (req, res) => {
       return res.status(400).json({ error: "Unsupported file type" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `
 You are an advanced Applicant Tracking System (ATS) evaluator, industry recruiter, and career coach with deep expertise in resume parsing, job market trends, and skills gap analysis.
 
